@@ -6,7 +6,7 @@ from os import environ as ENV
 
 load_dotenv()
 
-engine = create_engine(ENV.get("DATABASE_URL"))
+engine = create_engine(ENV.get("DATABASE_URL", "sqlite:///./db.sqlite3"))
 Base = declarative_base()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -16,7 +16,7 @@ async def get_db():
         db = SessionLocal()
         yield db
     finally:
-        db.close()
+        db.close() # type: ignore
 
 
 class RollHistories(Base):

@@ -4,10 +4,11 @@ import discord
 from discord import app_commands
 from database import RollHistories, SessionLocal, get_db
 from dotenv import load_dotenv
-import random
+from random import SystemRandom
 from os import environ as ENV
 
 load_dotenv()
+random = SystemRandom()
 
 
 class Client(discord.Client):
@@ -43,20 +44,24 @@ async def roll(
         color=discord.Color.gold(),
     )
     embed.add_field(name="Result:", value=result)
-    await interaction.response.send_message(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-
+    await interaction.response.send_message(
+        embed=embed, allowed_mentions=discord.AllowedMentions.none()
+    )
 
 
 @client.tree.command(name="history", description="Shows your last 10 rolls")
 @app_commands.describe(person="The person to show the history of")
-async def history(interaction: discord.Interaction, person: discord.Member | discord.User | None = None):
+async def history(
+    interaction: discord.Interaction,
+    person: discord.Member | discord.User | None = None,
+):
     if person is None:
         person = interaction.user
 
     with contextlib.closing(SessionLocal()) as db:
         rolls = (
             db.query(RollHistories)
-            .filter(RollHistories.userid == person.id) # type: ignore
+            .filter(RollHistories.userid == person.id)  # type: ignore
             .order_by(RollHistories.time.desc())
             .limit(10)
             .all()
@@ -64,12 +69,16 @@ async def history(interaction: discord.Interaction, person: discord.Member | dis
 
     afterstring = "" if person == interaction.user else f" for {person.mention}"
 
-    embed = discord.Embed(title=f"Last {len(rolls)} roll{'' if len(rolls) == 1 else 's'}{afterstring}:", color=discord.Color.gold())
+    embed = discord.Embed(
+        title=f"Last {len(rolls)} roll{'' if len(rolls) == 1 else 's'}{afterstring}:",
+        color=discord.Color.gold(),
+    )
     for roll in rolls:
         embed.add_field(name=f"d{roll.dice}: {roll.result}", value="", inline=False)
 
-    await interaction.response.send_message(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-
+    await interaction.response.send_message(
+        embed=embed, allowed_mentions=discord.AllowedMentions.none()
+    )
 
 
 @client.tree.command(name="rollgame", description="Makes a game out of rolling dice!")
@@ -112,12 +121,14 @@ async def rollgame(
                     description="The game has timed out. No winner will be announced.",
                     color=discord.Color.red(),
                 )
-                
+
                 # Disable the buttons
                 for child in self.children:
-                    child.disabled = True # type: ignore
+                    child.disabled = True  # type: ignore
 
-                await (await cmdinteraction.original_response()).edit(embed=embed, view=self)
+                await (await cmdinteraction.original_response()).edit(
+                    embed=embed, view=self
+                )
 
         @discord.ui.button(label="Join", style=discord.ButtonStyle.green)
         async def join(
@@ -135,21 +146,13 @@ async def rollgame(
                 rolls = sorted(self.rolls.items(), key=lambda x: x[1], reverse=True)
                 embed = discord.Embed(
                     title="Roll Game",
-                    description=f"Rolling a `d{self.dice}` to see who wins!\n\n**Leaderboard:**\n" + "\n".join(
-                        [f"<@{player}>: {roll}" for player, roll in rolls]
-                    ),
+                    description=f"Rolling a `d{self.dice}` to see who wins!\n\n**Leaderboard:**\n"
+                    + "\n".join([f"<@{player}>: {roll}" for player, roll in rolls]),
                     color=discord.Color.green(),
                 )
 
-
-                embed.add_field(
-                    name="Winner:",
-                    value=f"<@{rolls[0][0]}>"
-                )
-                embed.add_field(
-                    name="Loser:",
-                    value=f"<@{rolls[-1][0]}>"
-                )
+                embed.add_field(name="Winner:", value=f"<@{rolls[0][0]}>")
+                embed.add_field(name="Loser:", value=f"<@{rolls[-1][0]}>")
 
                 button.disabled = True
                 await interaction.response.edit_message(embed=embed, view=self)
@@ -181,18 +184,22 @@ async def rollgame(
             if len(self.rolls) == self.players:
                 self.stop()
 
-    await cmdinteraction.response.send_message(embed=discord.Embed(
-        title="Roll Game",
-        description=f"Rolling a `d{dice}` to see who wins!\n\n**Players:**\n",
-        color=discord.Color.green(),
-    ), view=RollGame(players, dice, Data()))
+    await cmdinteraction.response.send_message(
+        embed=discord.Embed(
+            title="Roll Game",
+            description=f"Rolling a `d{dice}` to see who wins!\n\n**Players:**\n",
+            color=discord.Color.green(),
+        ),
+        view=RollGame(players, dice, Data()),
+    )
+
 
 def calculate_averages(userid) -> dict[int, float]:
     averages = {}
     with contextlib.closing(SessionLocal()) as db:
         rolls = (
             db.query(RollHistories)
-            .filter(RollHistories.userid == userid) # type: ignore
+            .filter(RollHistories.userid == userid)  # type: ignore
             .all()
         )
 
@@ -202,9 +209,7 @@ def calculate_averages(userid) -> dict[int, float]:
         else:
             # Calculate the average, and round to 2 decimal places.
             # Make it an int if it's a whole number.
-            averages[roll.dice] = round(
-                (averages[roll.dice] + roll.result) / 2, 2
-            )
+            averages[roll.dice] = round((averages[roll.dice] + roll.result) / 2, 2)
             if averages[roll.dice] % 1 == 0:
                 averages[roll.dice] = int(averages[roll.dice])
 
@@ -219,7 +224,7 @@ async def average(interaction: discord.Interaction):
         embed = discord.Embed(
             title="No Rolls Found",
             description="You haven't rolled any dice yet! Try `/roll`.",
-            color=discord.Color.red()
+            color=discord.Color.red(),
         )
         await interaction.response.send_message(embed=embed)
         return
@@ -227,23 +232,22 @@ async def average(interaction: discord.Interaction):
     embed = discord.Embed(
         title="Roll Averages",
         description="\n".join(
-            [
-                f"d{dice}: {result}"
-                for dice, result in averages.items()
-            ]
+            [f"d{dice}: {result}" for dice, result in averages.items()]
         ),
-        color=discord.Color.green()
+        color=discord.Color.green(),
     )
     await interaction.response.send_message(embed=embed)
 
 
-@client.tree.command(name="leaderboard", description="Shows the people with the highest average")
+@client.tree.command(
+    name="leaderboard", description="Shows the people with the highest average"
+)
 @app_commands.describe(die="The die to show the leaderboard for")
 async def leaderboard(interaction: discord.Interaction, die: int):
     with contextlib.closing(SessionLocal()) as db:
         averages = (
             db.query(RollHistories)
-            .filter(RollHistories.dice == die) # type: ignore
+            .filter(RollHistories.dice == die)  # type: ignore
             .all()
         )
 
@@ -251,11 +255,11 @@ async def leaderboard(interaction: discord.Interaction, die: int):
         embed = discord.Embed(
             title="No Rolls Found",
             description="No rolls have been made with that die yet! Try `/roll`.",
-            color=discord.Color.red()
+            color=discord.Color.red(),
         )
         await interaction.response.send_message(embed=embed)
         return
-    
+
     # Make a set of all the userids
     userids = set()
     for average in averages:
@@ -270,10 +274,12 @@ async def leaderboard(interaction: discord.Interaction, die: int):
         description="\n".join(
             [
                 f"{i+1}) <@{userid}>: {result}"
-                for i, (userid, result) in enumerate(sorted(averages.items(), key=lambda x: x[1], reverse=True)[:10])
+                for i, (userid, result) in enumerate(
+                    sorted(averages.items(), key=lambda x: x[1], reverse=True)[:10]
+                )
             ]
         ),
-        color=discord.Color.green()
+        color=discord.Color.green(),
     )
     await interaction.response.send_message(embed=embed)
 

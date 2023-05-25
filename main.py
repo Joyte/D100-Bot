@@ -3,6 +3,7 @@ from typing import Optional
 import discord
 from discord import app_commands
 from database import RollHistories, SessionLocal, get_db
+import sqlalchemy.exc as sqlalchemyexc
 from dotenv import load_dotenv
 from random import SystemRandom
 from os import environ as ENV
@@ -167,8 +168,10 @@ async def rollgame(
                                 result=player[1],
                             )
                         )
-                    db.commit()
-
+                    try:
+                        db.commit()
+                    except sqlalchemyexc.OperationalError:
+                        pass
                 self.data.won = True
 
             else:

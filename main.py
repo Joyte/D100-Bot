@@ -179,7 +179,10 @@ async def rollgame(
                 )
                 await interaction.response.edit_message(embed=embed)
 
-            await interaction.followup.send("You joined the game!", ephemeral=True)
+            await interaction.followup.send(
+                f"You joined the game!\nYou rolled a `{self.rolls[interaction.user.id]}`.",
+                ephemeral=True,
+            )
 
             if len(self.rolls) == self.players:
                 self.stop()
